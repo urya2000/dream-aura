@@ -10,6 +10,9 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+const userRouter = require('./router/userRouter');
+app.use('/api/auth', userRouter);
+
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => {
         console.log('MongoDB connected');
