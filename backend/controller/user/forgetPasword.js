@@ -1,4 +1,3 @@
-
 const userModel = require("../../schema/userModel");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
@@ -8,16 +7,19 @@ const resetOtpStore = {};
 
 // Nodemailer transporter (reuse config as in userController)
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.EMAIL_USER || 'your_email@gmail.com',
-        pass: process.env.EMAIL_PASS || 'your_email_password',
-    },
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER || "your_email@gmail.com",
+    pass: process.env.EMAIL_PASS || "your_email_password",
+  },
+  tls: {
+    rejectUnauthorized: false, // Allow self-signed certificates
+  },
 });
 
 // Helper: Create OTP Email Template (reuse Dream Aura branding)
-const createOTPEmailTemplate = (otp, purpose = 'password reset') => {
-    return `
+const createOTPEmailTemplate = (otp, purpose = "password reset") => {
+  return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
@@ -53,65 +55,76 @@ const createOTPEmailTemplate = (otp, purpose = 'password reset') => {
       </div>
     </body>
     </html>
-  `
-}
+  `;
+};
 
 // 1. Request password reset: send OTP
 const requestPasswordReset = async (req, res) => {
-    try {
-        const { email } = req.body;
-        const user = await userModel.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: "Invalid email address." });
-        }
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        resetOtpStore[email] = {
-            otp,
-            expires: Date.now() + 10 * 60 * 1000 // 10 min expiry
-        };
-        await transporter.sendMail({
-            from: process.env.EMAIL_USER || 'your_email@gmail.com',
-            to: email,
-            subject: 'Dream Aura Password Reset OTP',
-            html: createOTPEmailTemplate(otp, 'password reset')
-        });
-        res.status(200).json({ message: "OTP sent to email. Please verify to reset your password." });
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
+  try {
+    const { email } = req.body;
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email address." });
     }
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    resetOtpStore[email] = {
+      otp,
+      expires: Date.now() + 10 * 60 * 1000, // 10 min expiry
+    };
+    await transporter.sendMail({
+      from: process.env.EMAIL_USER || "your_email@gmail.com",
+      to: email,
+      subject: "Dream Aura Password Reset OTP",
+      html: createOTPEmailTemplate(otp, "password reset"),
+    });
+    res
+      .status(200)
+      .json({
+        message: "OTP sent to email. Please verify to reset your password.",
+      });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 
 // 2. Verify OTP and update password
 const verifyResetOtpAndChangePassword = async (req, res) => {
-    try {
-        const { email, otp, new_password } = req.body;
-        const record = resetOtpStore[email];
-        if (!record) {
-            return res.status(400).json({ message: "No OTP request found for this email." });
-        }
-        if (record.otp !== otp) {
-            return res.status(400).json({ message: "Invalid OTP." });
-        }
-        if (Date.now() > record.expires) {
-            delete resetOtpStore[email];
-            return res.status(400).json({ message: "OTP expired." });
-        }
-        const user = await userModel.findOne({ email });
-        if (!user) {
-            return res.status(400).json({ message: "Invalid email address." });
-        }
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(new_password, salt);
-        user.password = hashedPassword;
-        await user.save();
-        delete resetOtpStore[email];
-        res.status(200).json({ message: "Password updated successfully. You can now log in with your new password." });
-    } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
+  try {
+    const { email, otp, new_password } = req.body;
+    const record = resetOtpStore[email];
+    if (!record) {
+      return res
+        .status(400)
+        .json({ message: "No OTP request found for this email." });
     }
+    if (record.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP." });
+    }
+    if (Date.now() > record.expires) {
+      delete resetOtpStore[email];
+      return res.status(400).json({ message: "OTP expired." });
+    }
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email address." });
+    }
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(new_password, salt);
+    user.password = hashedPassword;
+    await user.save();
+    delete resetOtpStore[email];
+    res
+      .status(200)
+      .json({
+        message:
+          "Password updated successfully. You can now log in with your new password.",
+      });
+  } catch (error) {
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
 
 module.exports = {
-    requestPasswordReset,
-    verifyResetOtpAndChangePassword
+  requestPasswordReset,
+  verifyResetOtpAndChangePassword,
 };
