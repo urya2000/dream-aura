@@ -1,17 +1,31 @@
 const userModel = require("../../schema/userModel");
-const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const nodemailer = require("nodemailer");
 
-// Helper: Create OTP Email Template
-const createOTPEmailTemplate = (otp, purpose = "verification") => {
+// In-memory OTP store for password reset
+const resetOtpStore = {};
+
+// Nodemailer transporter (reuse config as in userController)
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER || "your_email@gmail.com",
+    pass: process.env.EMAIL_PASS || "your_email_password",
+  },
+  tls: {
+    rejectUnauthorized: false, // Allow self-signed certificates
+  },
+});
+
+// Helper: Create OTP Email Template (reuse Dream Aura branding)
+const createOTPEmailTemplate = (otp, purpose = "password reset") => {
   return `
     <!DOCTYPE html>
     <html lang="en">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Dream Aura - Email Verification</title>
+      <title>Dream Aura - Password Reset</title>
     </head>
     <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; margin: 0; padding: 0;">
       <div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px rgba(0,0,0,0.1);">
@@ -20,9 +34,9 @@ const createOTPEmailTemplate = (otp, purpose = "verification") => {
           <p style="color:#E0E7FF;font-size:14px;margin:0;font-family:'Segoe UI',Arial,sans-serif;">Secure Payment Gateway</p>
         </div>
         <div style="padding:40px 40px 30px;">
-          <h1 style="font-size:18px;color:#1F2937;margin-bottom:20px;font-weight:500;font-family:'Segoe UI',Arial,sans-serif;">Email Verification Required</h1>
+          <h1 style="font-size:18px;color:#1F2937;margin-bottom:20px;font-weight:500;font-family:'Segoe UI',Arial,sans-serif;">Password Reset OTP</h1>
           <p style="font-size:16px;color:#6B7280;margin-bottom:30px;line-height:1.7;font-family:'Segoe UI',Arial,sans-serif;">
-            We received a request to verify your email address for ${purpose}.<br>
+            We received a request to reset your password for ${purpose}.<br>
             Please use the verification code below to complete the process.
           </p>
           <div style="background:#F8FAFC;border:2px solid #E2E8F0;border-radius:12px;padding:25px;text-align:center;margin:30px 0;">
@@ -44,81 +58,40 @@ const createOTPEmailTemplate = (otp, purpose = "verification") => {
   `;
 };
 
-// In-memory OTP store (for demo; use Redis or DB for production)
-const otpStore = {};
-
-// Nodemailer transporter (configure with your SMTP details)
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USER || "your_email@gmail.com",
-    pass: process.env.EMAIL_PASS || "your_email_password",
-  },
-});
-
-// 1. Registration endpoint: send OTP
-const register = async (req, res) => {
+// 1. Request password reset: send OTP
+const requestPasswordReset = async (req, res) => {
   try {
-    const {
-      name,
-      email,
-      phone,
-      address,
-      city,
-      state,
-      country,
-      pincode,
-      role,
-      password,
-    } = req.body;
-    const existingUser = await userModel.findOne({ email });
-    if (existingUser) {
-      return res
-        .status(400)
-        .json({ message: "User already exists with this email." });
+    const { email } = req.body;
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email address." });
     }
-    // Generate OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    // Hash password
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
-    // Store user data and OTP in memory
-    otpStore[email] = {
+    resetOtpStore[email] = {
       otp,
-      userData: {
-        name,
-        email,
-        phone,
-        address,
-        city,
-        state,
-        country,
-        pincode,
-        role,
-        password: hashedPassword,
-      },
       expires: Date.now() + 10 * 60 * 1000, // 10 min expiry
     };
-    // Send OTP email
     await transporter.sendMail({
       from: process.env.EMAIL_USER || "your_email@gmail.com",
       to: email,
-      subject: "Your OTP for Registration",
-      html: createOTPEmailTemplate(otp, "registration"),
+      subject: "Dream Aura Password Reset OTP",
+      html: createOTPEmailTemplate(otp, "password reset"),
     });
-    res.status(200).json({
-      message: "OTP sent to email. Please verify to complete registration.",
-    });
+    res
+      .status(200)
+      .json({
+        message: "OTP sent to email. Please verify to reset your password.",
+      });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-// 2. OTP verification endpoint: finalize registration
-const verifyOtp = async (req, res) => {
+// 2. Verify OTP and update password
+const verifyResetOtpAndChangePassword = async (req, res) => {
   try {
-    const { email, otp } = req.body;
-    const record = otpStore[email];
+    const { email, otp, new_password } = req.body;
+    const record = resetOtpStore[email];
     if (!record) {
       return res
         .status(400)
@@ -128,39 +101,30 @@ const verifyOtp = async (req, res) => {
       return res.status(400).json({ message: "Invalid OTP." });
     }
     if (Date.now() > record.expires) {
-      delete otpStore[email];
+      delete resetOtpStore[email];
       return res.status(400).json({ message: "OTP expired." });
     }
-    // Create user
-    const user = new userModel({
-      ...record.userData,
-      isVerified: true,
-      trash: 0,
-    });
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.status(400).json({ message: "Invalid email address." });
+    }
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(new_password, salt);
+    user.password = hashedPassword;
     await user.save();
-    delete otpStore[email];
-    // Generate JWT token
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || "secretkey",
-      { expiresIn: "7d" }
-    );
-    res.status(201).json({
-      message: "User registered and verified successfully.",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-      },
-      token,
-    });
+    delete resetOtpStore[email];
+    res
+      .status(200)
+      .json({
+        message:
+          "Password updated successfully. You can now log in with your new password.",
+      });
   } catch (error) {
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 module.exports = {
-  register,
-  verifyOtp,
+  requestPasswordReset,
+  verifyResetOtpAndChangePassword,
 };
