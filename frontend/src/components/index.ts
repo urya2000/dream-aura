@@ -4,6 +4,9 @@ export * from "./ui";
 // Layout Components
 export * from "./layout";
 
+// Auth Components
+export * from "./auth";
+
 // Hero Components
 export * from "./hero";
 
