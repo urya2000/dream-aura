@@ -3,12 +3,19 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { Button, Input } from "@/components/ui";
+import { ForgotPasswordModal } from "@/components/auth";
 import Image from "next/image";
+import axios from "axios";
+import { FaRegEye } from "react-icons/fa";
+import { FaRegEyeSlash } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -21,23 +28,31 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
+      const { data } = await axios.post("/api/login", formData, {
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        window.location.href = "/";
-      } else {
-        setError(data.message || "Login failed");
+      toast.success("Login successful!");
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      window.location.href = "/";
+    } catch (err: unknown) {
+      let message = "Login failed. Please try again.";
+      if (
+        err &&
+        typeof err === "object" &&
+        "response" in err &&
+        err.response &&
+        typeof err.response === "object" &&
+        "data" in err.response &&
+        err.response.data &&
+        typeof err.response.data === "object" &&
+        "message" in err.response.data
+      ) {
+        // @ts-expect-error: TypeScript can't infer the structure of err
+        message = err.response.data.message || message;
       }
-    } catch {
-      setError("Network error. Please try again.");
+      toast.error(message);
+      setError(message);
     } finally {
       setLoading(false);
     }
@@ -46,13 +61,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex">
       {/* Left Side Image */}
-      <div className="hidden md:flex w-1/2 items-center justify-center bg-gray-100">
+      <div className="hidden md:flex w-1/2 h-screen relative bg-gray-100">
         <Image
-          width={100}
-          height={100}
-          src="/images/dream_aura_logo.png"
+          src="/images/login_screen.png"
           alt="Login Illustration"
-          className="max-w-full h-auto"
+          fill
+          className="object-contain"
         />
       </div>
 
@@ -94,7 +108,7 @@ export default function LoginPage() {
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  placeholder="you@example.com"
+                  placeholder="Email"
                   required
                   className="w-full"
                 />
@@ -104,53 +118,47 @@ export default function LoginPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password
                 </label>
-                <Input
-                  type="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••••••"
-                  required
-                  className="w-full"
-                />
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    name="password"
+                    value={formData.password}
+                    onChange={handleChange}
+                    placeholder="••••••••••••"
+                    required
+                    className="w-full pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? <FaRegEye /> : <FaRegEyeSlash />}
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <input
-                    id="remember-me"
-                    name="remember-me"
-                    type="checkbox"
-                    className="h-4 w-4 text-yellow-600 focus:ring-yellow-500 border-gray-300 rounded"
-                  />
-                  <label
-                    htmlFor="remember-me"
-                    className="ml-2 block text-sm text-gray-900"
-                  >
-                    Remember me
-                  </label>
-                </div>
-
+              <div className="flex items-center justify-end">
                 <div className="text-sm">
-                  <Link
-                    href="#"
-                    className="font-medium text-violet-600 hover:text-violet-500"
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotPasswordModal(true)}
+                    className="font-medium text-violet-600 hover:text-violet-500 cursor-pointer"
                   >
                     Forgot your password?
-                  </Link>
+                  </button>
                 </div>
               </div>
 
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-violet-700 hover:bg-violet-600 text-white py-2 rounded-lg font-medium text-lg cursor-pointer transition-colors duration-200"
+                className="w-full bg-violet-700 hover:bg-violet-700 text-white py-2 rounded-lg font-medium text-lg cursor-pointer transition-colors duration-200"
               >
                 {loading ? "Signing in..." : "Sign In"}
               </Button>
             </form>
 
-            {/* Optional: OAuth and other links remain same */}
             <div className="mt-8 text-center">
               <p className="text-sm text-gray-600">
                 Don&apos;t have an account?{" "}
@@ -165,6 +173,12 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+
+      {/* Forgot Password Modal */}
+      <ForgotPasswordModal
+        isOpen={showForgotPasswordModal}
+        onClose={() => setShowForgotPasswordModal(false)}
+      />
     </div>
   );
 }

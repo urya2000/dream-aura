@@ -6,6 +6,9 @@ import { Button, Input } from "@/components/ui";
 import Image from "next/image";
 import axios from "axios";
 import type { AxiosError } from "axios";
+import { FaRegEye } from "react-icons/fa";
+import { FaRegEyeSlash } from "react-icons/fa";
+import toast from "react-hot-toast";
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
@@ -56,8 +59,7 @@ export default function RegisterPage() {
       return "Please enter a valid email address";
     }
 
-    const passwordRegex =
-      /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])[A-Za-z\d!@#$%^&*]{8,}$/;
     if (!passwordRegex.test(formData.password)) {
       return "Password must be at least 8 characters, include 1 uppercase & 1 special character";
     }
@@ -116,15 +118,20 @@ export default function RegisterPage() {
     try {
       await axios.post("/api/register", {
         ...formData,
-        role: "user",
+        role: "buyer",
       });
 
       setStep(3);
+      toast.success(
+        "Registration successful! Please check your email for the OTP."
+      );
     } catch (error: unknown) {
       const err = error as AxiosError<{ message?: string }>;
+      toast.error(
+        err.response?.data?.message || "Registration failed. Please try again."
+      );
       setError(
-        err.response?.data?.message ||
-          "Registration failed. Please try again."
+        err.response?.data?.message || "Registration failed. Please try again."
       );
     } finally {
       setLoading(false);
@@ -141,13 +148,17 @@ export default function RegisterPage() {
         email: formData.email,
         otp: otp,
       });
-
+      toast.success("OTP verified successfully!");
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
       window.location.href = "/";
     } catch (error: unknown) {
       const err = error as AxiosError<{ message?: string }>;
       setError(
+        err.response?.data?.message ||
+          "OTP verification failed. Please try again."
+      );
+      toast.error(
         err.response?.data?.message ||
           "OTP verification failed. Please try again."
       );
@@ -298,7 +309,7 @@ function Step1Form({
           name="name"
           value={formData.name}
           onChange={handleChange}
-          placeholder="Amélie Laurent"
+          placeholder="Full Name"
         />
 
         <InputField
@@ -306,7 +317,7 @@ function Step1Form({
           name="email"
           value={formData.email}
           onChange={handleChange}
-          placeholder="amelie@gmail.com"
+          placeholder="Email"
           type="email"
         />
 
@@ -371,9 +382,7 @@ function Step2Form({
         <h2 className="text-3xl font-bold text-gray-900 mb-2">
           Address Information
         </h2>
-        <p className="text-gray-600">
-          Step 2 of 3: Complete your profile
-        </p>
+        <p className="text-gray-600">Step 2 of 3: Complete your profile</p>
       </div>
 
       {error && (
@@ -388,7 +397,7 @@ function Step2Form({
           name="phone"
           value={formData.phone}
           onChange={handleChange}
-          placeholder="1234567890"
+          placeholder="Phone"
           type="tel"
         />
 
@@ -397,7 +406,7 @@ function Step2Form({
           name="address"
           value={formData.address}
           onChange={handleChange}
-          placeholder="123 Main Street"
+          placeholder="Address"
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -406,14 +415,14 @@ function Step2Form({
             name="city"
             value={formData.city}
             onChange={handleChange}
-            placeholder="New York"
+            placeholder="City"
           />
           <InputField
             label="State"
             name="state"
             value={formData.state}
             onChange={handleChange}
-            placeholder="NY"
+            placeholder="State"
           />
         </div>
 
@@ -423,14 +432,14 @@ function Step2Form({
             name="pincode"
             value={formData.pincode}
             onChange={handleChange}
-            placeholder="100001"
+            placeholder="Pincode"
           />
           <InputField
             label="Country"
             name="country"
             value={formData.country}
             onChange={handleChange}
-            placeholder="USA"
+            placeholder="Country"
           />
         </div>
 
@@ -501,7 +510,9 @@ function Step3Form({
           <Input
             type="text"
             value={otp}
-            onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+            onChange={(e) =>
+              setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+            }
             placeholder="000000"
             maxLength={6}
             className="w-full text-center text-3xl tracking-widest font-mono py-4"
@@ -546,20 +557,34 @@ function InputField({
   placeholder?: string;
   type?: string;
 }) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">
         {label}
       </label>
-      <Input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        required
-        className="w-full"
-      />
+      <div className="relative">
+        <Input
+          type={isPassword ? (showPassword ? "text" : "password") : type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          required
+          className="w-full pr-10"
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 hover:text-gray-700"
+          >
+            {showPassword ? <FaRegEye /> : <FaRegEyeSlash />}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
