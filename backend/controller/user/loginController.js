@@ -2,41 +2,44 @@ const userModel = require("../../schema/userModel");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
-// Login controller
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await userModel.findOne({ email });
+
     if (!user) {
       return res.status(400).json({ message: "Invalid email." });
     }
+
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(400).json({ message: "Invalid password." });
     }
+
     if (!user.isVerified) {
       return res
         .status(403)
         .json({ message: "Please verify your email before logging in." });
     }
-    // Ensure trash is checked as string or number, and handle possible undefined
-    const trashValue =
-      user.trash !== undefined && user.trash !== null
-        ? user.trash
-        : user.toObject && user.toObject().trash;
-    if (trashValue === 1 || trashValue === "1") {
+
+    // ✅ Check if user is trashed (blocked/deleted)
+    if (user.trash) {
       return res
         .status(403)
         .json({ message: "Your account is removed.", removed: true });
     }
-    // Update last_login
+
+    // ✅ Update last login timestamp
     user.last_login = new Date();
     await user.save();
+
+    // ✅ Generate JWT token
     const token = jwt.sign(
       { id: user._id, email: user.email, role: user.role },
       process.env.JWT_SECRET || "secretkey",
       { expiresIn: "7d" }
     );
+
     res.status(200).json({
       message: "Login successful.",
       user: {
