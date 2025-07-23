@@ -1,14 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { Button } from "@/components/ui/Button";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 const ProfilePage = () => {
+  const [userId, setUserId] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [profileData, setProfileData] = useState({
-    username: "Perumal ",
+    name: "Perumal ",
     email: "perualavinash210@gmail.com",
     address: "37/A north street annupanadi",
     city: "madurai",
@@ -17,9 +21,52 @@ const ProfilePage = () => {
     phone: "6369890217",
   });
 
+  useEffect(() => {
+  const userStr = localStorage.getItem("user");
+   const tokenStr = localStorage.getItem("token");
+  if (userStr) {
+    try {
+      const user = JSON.parse(userStr);
+      setUserId(user.id);
+       setToken(tokenStr);
+    } catch (err) {
+      console.error("Invalid user JSON");
+    }
+  }
+}, []);
+
+useEffect(() => {
+  const fetchProfileData = async () => {
+    if(!userId) return;
+    try {
+      const res = await axios.get(`/api/user/${userId}`,{
+        headers: {
+          Authorization: `Bearer ${token}`, // ✅ add token to headers
+        },
+      });
+      if (res.data) {
+        setProfileData({
+          name: res.data.user.name || "",
+          email: res.data.user.email || "",
+          address: res.data.user.address || "",
+          city: res.data.user.city || "",
+          state: res.data.user.state || "",
+          pincode: res.data.user.pincode || "",
+          phone: res.data.user.phone || "",
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching profile data:", err);
+    }
+  };
+
+  fetchProfileData();
+}, [userId]);
+
+
   const [passwords, setPasswords] = useState({
-    oldPassword: "",
-    newPassword: "",
+    old_password: "",
+    new_password: "",
   });
 
   const handleProfileUpdate = (field: string, value: string) => {
@@ -35,6 +82,72 @@ const ProfilePage = () => {
       [field]: value,
     }));
   };
+
+  //profile update api
+
+  const updateProfile = async () => {
+  if (!userId || !token) return;
+
+  try {
+    const res = await axios.put(`/api/user/${userId}`, profileData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.status === 200) {
+      toast.success("Profile updated successfully");
+      // optional: redirect or refresh data
+      // router.push("/"); // if you want to go to home
+    }
+  } catch (error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.message || "Failed to update profile";
+    toast.error(message);
+  } else if (error instanceof Error) {
+    toast.error(error.message);
+  } else {
+    toast.error("An unknown error occurred");
+  }
+}
+};
+
+//change password api
+
+const changePassword = async () => {
+  if (!userId || !token) return;
+if (!passwords.old_password || !passwords.new_password) {
+  toast.error("Both old and new passwords are required");
+  return;
+}
+  try {
+    const res = await axios.post(
+      `/api/change-password/${userId}`,
+      passwords,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (res.status === 200) {
+      toast.success("Password updated successfully");
+      // Optionally reset password fields
+      setPasswords({ old_password: "", new_password: "" });
+    }
+  } catch (error: unknown) {
+  if (axios.isAxiosError(error)) {
+    const message = error.response?.data?.message || "Failed to update Password";
+    toast.error(message);
+  } else if (error instanceof Error) {
+    toast.error(error.message);
+  } else {
+    toast.error("An unknown error occurred");
+  }
+}
+};
+
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -100,9 +213,9 @@ const ProfilePage = () => {
                   </label>
                   <input
                     type="password"
-                    value={passwords.oldPassword}
+                    value={passwords.old_password}
                     onChange={(e) =>
-                      handlePasswordUpdate("oldPassword", e.target.value)
+                      handlePasswordUpdate("old_password", e.target.value)
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="••••••••"
@@ -115,9 +228,9 @@ const ProfilePage = () => {
                   </label>
                   <input
                     type="password"
-                    value={passwords.newPassword}
+                    value={passwords.new_password}
                     onChange={(e) =>
-                      handlePasswordUpdate("newPassword", e.target.value)
+                      handlePasswordUpdate("new_password", e.target.value)
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="••••••••"
@@ -127,6 +240,7 @@ const ProfilePage = () => {
                 <Button
                   variant="outline"
                   className="w-full border-gray-300 text-gray-700 cursor-pointer"
+                    onClick={changePassword}
                 >
                   Change Password
                 </Button>
@@ -142,16 +256,16 @@ const ProfilePage = () => {
               </h2>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Username */}
+                {/* name */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Fullname
                   </label>
                   <input
                     type="text"
-                    value={profileData.username}
+                    value={profileData.name}
                     onChange={(e) =>
-                      handleProfileUpdate("username", e.target.value)
+                      handleProfileUpdate("name", e.target.value)
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   />
@@ -233,10 +347,11 @@ const ProfilePage = () => {
                     <input
                       type="email"
                       value={profileData.email}
+                      disabled
                       onChange={(e) =>
                         handleProfileUpdate("email", e.target.value)
                       }
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-gray-100 cursor-not-allowed"
                     />
                   </div>
 
@@ -265,7 +380,7 @@ const ProfilePage = () => {
                 >
                   Cancel
                 </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 cursor-pointer">
+                <Button className="bg-blue-600 hover:bg-blue-700 cursor-pointer" onClick={updateProfile}>
                   Save Changes
                 </Button>
               </div>
