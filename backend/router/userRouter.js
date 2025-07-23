@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const multer = require("multer");
 const { register, verifyOtp } = require("../controller/user/userController");
 const { login } = require("../controller/user/loginController");
 const {
@@ -15,6 +16,9 @@ const {
   softDeleteUser,
   hardDeleteUser,
 } = require("../controller/user/deleteUser");
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 // Middleware to verify JWT token
 const verifyToken = require("../auth/verifyToken");
@@ -37,14 +41,14 @@ router.post("/verify-reset-otp", verifyResetOtpAndChangePassword);
 // POST /api/auth/change-password
 router.post("/change-password/:userId", verifyToken, changePassword);
 
-// GET /api/auth/user/:id
+// GET /api/user/:id
 router.get("/user/:id", verifyToken, getUserById);
 
 // GET /api/auth/user
 router.get("/user", verifyToken, getall);
 
 // PUT /api/auth/user/:id
-router.put("/user/:id", verifyToken, updateUser);
+router.put("/user/:id", verifyToken, upload.single("image"), updateUser);
 
 // delete soft, hard
 // DELETE /api/auth/user/soft/:id
