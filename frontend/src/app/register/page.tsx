@@ -9,6 +9,7 @@ import type { AxiosError } from "axios";
 import { FaRegEye } from "react-icons/fa";
 import { FaRegEyeSlash } from "react-icons/fa";
 import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
@@ -26,7 +27,7 @@ export default function RegisterPage() {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+const router = useRouter();
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value: originalValue } = e.target;
     let value = originalValue;
@@ -151,7 +152,8 @@ export default function RegisterPage() {
       toast.success("OTP verified successfully!");
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      window.location.href = "/";
+      // window.location.href = "/";
+      router.push("/")
     } catch (error: unknown) {
       const err = error as AxiosError<{ message?: string }>;
       setError(

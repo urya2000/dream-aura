@@ -2,8 +2,7 @@
 
 import React, { useState } from "react";
 import { Card } from "@/components/ui";
-import { LoginForm } from "./LoginForm";
-import { RegisterForm } from "./RegisterForm";
+
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -58,22 +57,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     : "text-gray-600 hover:text-gray-900"
                 }`}
               >
-                Sign In
+                Sign 
               </button>
             </div>
 
-            {/* Content */}
-            {mode === "register" ? (
-              <RegisterForm
-                onSuccess={onClose}
-                onSwitchToLogin={() => setMode("login")}
-              />
-            ) : (
-              <LoginForm
-                onSuccess={onClose}
-                onSwitchToRegister={() => setMode("register")}
-              />
-            )}
+            
           </div>
         </Card>
       </div>
