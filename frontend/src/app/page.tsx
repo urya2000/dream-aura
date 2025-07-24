@@ -6,7 +6,7 @@ import {
   // FeaturesSection,
   AboutSection,
   TestimonialsSection,
-  ContactSection,
+  // ContactSection,
   FAQSection,
   NewsSection,
   PropertyTypesSection,
@@ -26,7 +26,7 @@ export default function Home() {
         <TestimonialsSection />
         <FAQSection />
 
-        <ContactSection />
+        {/* <ContactSection /> */}
       </main>
       <Footer />
     </div>

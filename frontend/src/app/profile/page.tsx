@@ -29,6 +29,10 @@ const ProfilePage = () => {
   const [token, setToken] = useState<string | null>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [step, setStep] = useState(1);
+  const [newEmail, setNewEmail] = useState("");
+  const [otp, setOtp] = useState("");
 
   const [profileData, setProfileData] = useState<ProfileData>({
     name: "",
@@ -199,7 +203,131 @@ const ProfilePage = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-<Header/>
+      {/* MODAL: Place here */}
+      {showEmailModal && (
+       <div className="fixed inset-0 z-50 bg-opacity-30 backdrop-blur-sm flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              {step === 1 ? "Change Email Address" : "Enter OTP"}
+            </h2>
+            {step === 1 ? (
+              <>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  New Email
+                </label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 mb-4"
+                  placeholder="example@email.com"
+                />
+                <Button
+                  className="w-full bg-blue-600 hover:bg-blue-700 cursor-pointer"
+                  onClick={async () => {
+                    try {
+                      const res = await axios.post(
+                        "/api/request-email-change",
+                        {
+                          userId,
+                          newEmail: newEmail,
+                        },
+                        {
+                          headers: {
+                            Authorization: `Bearer ${token}`,
+                          },
+                        }
+                      );
+                      if (res.status === 200) {
+                        toast.success("OTP sent to new email");
+                        setStep(2);
+                      }
+                    } catch (err) {
+                      if (axios.isAxiosError(err)) {
+                        toast.error(
+                          err.response?.data?.message ||
+                            "Failed to request email change"
+                        );
+                      } else {
+                        toast.error("Failed to request email change");
+                      }
+                    }
+                  }}
+                >
+                  Continue
+                </Button>
+              </>
+            ) : (
+              <>
+                <label className="block mb-2 text-sm font-medium text-gray-700">
+                  Enter OTP
+                </label>
+                <input
+                  type="text"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 mb-4"
+                  placeholder="123456"
+                />
+                <Button
+                  className="w-full bg-green-600 hover:bg-green-700 cursor-pointer"
+                  onClick={async () => {
+                    try {
+                      const res = await axios.post(
+                        "/api/verify-email-change-otp",
+                        {
+                          userId,
+                          newEmail: newEmail,
+                          otp,
+                        },
+                        {
+                          headers: {
+                            Authorization: `Bearer ${token}`,
+                          },
+                        }
+                      );
+                      if (res.status === 200) {
+                        toast.success("Email updated successfully");
+                        setProfileData((prev) => ({
+                          ...prev,
+                          email: newEmail,
+                        }));
+                        setShowEmailModal(false);
+                        setStep(1);
+                        setNewEmail("");
+                        setOtp("");
+                      }
+                    } catch (err) {
+                      if (axios.isAxiosError(err)) {
+                        toast.error(
+                          err.response?.data?.message || "Failed to verify OTP"
+                        );
+                      } else {
+                        toast.error("Failed to verify OTP");
+                      }
+                    }
+                  }}
+                >
+                  Verify & Update
+                </Button>
+              </>
+            )}
+            <button
+              onClick={() => {
+                setShowEmailModal(false);
+                setStep(1);
+                setNewEmail("");
+                setOtp("");
+              }}
+              className="mt-4 text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900">User Profile</h1>
@@ -228,34 +356,37 @@ const ProfilePage = () => {
                     height={192}
                     className="w-full h-full object-cover"
                   />
-                  
                 </div>
 
-               <div className="ml-[120px]">
-                 {/* File input */}
-                <input
-                  type="file"
-                  accept="image/jpeg, image/jpg, image/png, image/webp"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      const validTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
-                      if (!validTypes.includes(file.type)) {
-                        toast.error("Only JPG, PNG, or WEBP images are allowed");
-                        return;
+                <div className="ml-[120px]">
+                  {/* File input */}
+                  <input
+                    type="file"
+                    accept="image/jpeg, image/jpg, image/png, image/webp"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const validTypes = [
+                          "image/jpeg",
+                          "image/jpg",
+                          "image/png",
+                          "image/webp",
+                        ];
+                        if (!validTypes.includes(file.type)) {
+                          toast.error("Only JPG, PNG, or WEBP images are allowed");
+                          return;
+                        }
+                        if (file.size > 1024 * 1024) {
+                          toast.error("Image size must be less than 1MB");
+                          return;
+                        }
+                        setSelectedImage(file);
+                        setImagePreview(URL.createObjectURL(file));
                       }
-                      if (file.size > 1024 * 1024) {
-                        toast.error("Image size must be less than 1MB");
-                        return;
-                      }
-                      setSelectedImage(file);
-                      setImagePreview(URL.createObjectURL(file));
-                    }
-                  }}
-                  className="cursor-pointer text-gray-700 hover:text-violet-500 font-medium transition-colors mt-5"
-                />
-
-               </div>
+                    }}
+                    className="cursor-pointer text-gray-700 hover:text-violet-500 font-medium transition-colors mt-5"
+                  />
+                </div>
                 {/* Upload button */}
                 <Button
                   variant="outline"
@@ -266,7 +397,6 @@ const ProfilePage = () => {
                   Upload Photo
                 </Button>
               </div>
-
 
               {/* Password change */}
               <div className="space-y-4">
@@ -355,7 +485,16 @@ const ProfilePage = () => {
                   Contact Info
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <InputField label="Email" value={profileData.email} disabled />
+                  <div className="relative">
+                    <InputField label="Email" value={profileData.email} disabled />
+                    <button
+                      type="button"
+                      onClick={() => setShowEmailModal(true)}
+                      className="absolute right-3 top-9 text-blue-500 hover:text-blue-700 cursor-pointer"
+                    >
+                      ✏️
+                    </button>
+                  </div>
                   <InputField
                     label="Phone"
                     value={profileData.phone}
@@ -384,8 +523,10 @@ const ProfilePage = () => {
       </div>
 
     </div>
+
   );
 };
+
 
 /* ------------------------------
    Reusable InputField component

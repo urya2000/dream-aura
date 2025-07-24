@@ -1,13 +1,15 @@
 import React from "react";
 import { AboutSection, FeaturesSection } from "@/components/sections";
+import { Footer, Header } from "@/components";
 
 export default function AboutPage() {
   return (
     <main className="min-h-screen">
       <div>
         {/* Page Header */}
+        <Header/>
         <div
-          className="relative py-20 bg-cover bg-center bg-no-repeat"
+          className="relative py-40 bg-cover bg-center bg-no-repeat"
           style={{
             backgroundImage: "url('/images/about-overlay-banner.jpg')",
           }}
@@ -29,6 +31,7 @@ export default function AboutPage() {
         {/* Features Section */}
         <FeaturesSection />
       </div>
+      <Footer />
     </main>
   );
 }
