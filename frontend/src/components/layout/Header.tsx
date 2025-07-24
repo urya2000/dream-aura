@@ -65,13 +65,13 @@ export const Header: React.FC = () => {
               Properties
             </Link>
             <Link
-              href="#about"
+              href="/about"
               className="text-gray-700 hover:text-purple-600 transition-colors"
             >
               About
             </Link>
             <Link
-              href="#contact"
+              href="/contact"
               className="text-gray-700 hover:text-purple-600 transition-colors"
             >
               Contact
