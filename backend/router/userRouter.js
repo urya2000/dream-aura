@@ -17,43 +17,52 @@ const {
   hardDeleteUser,
 } = require("../controller/user/deleteUser");
 
+
+const {requestEmailChange , verifyEmailChangeOtp} = require("../controller/user/emailchange");
+
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
 // Middleware to verify JWT token
 const verifyToken = require("../auth/verifyToken");
 
-// POST /api/auth/register
+// POST /api/register
 router.post("/register", register);
 
-// POST /api/auth/verify-otp
+// POST /api/verify-otp
 router.post("/verify-otp", verifyOtp);
 
-// POST /api/auth/login
+// POST /api/login
 router.post("/login", login);
 
-// POST /api/auth/request-password-reset
+// POST /api/request-password-reset
 router.post("/request-password-reset", requestPasswordReset);
 
-// POST /api/auth/verify-reset-otp
+// POST /api/verify-reset-otp
 router.post("/verify-reset-otp", verifyResetOtpAndChangePassword);
 
-// POST /api/auth/change-password
+// POST /api/change-password
 router.post("/change-password/:userId", verifyToken, changePassword);
 
 // GET /api/user/:id
 router.get("/user/:id", verifyToken, getUserById);
 
-// GET /api/auth/user
+// GET /api/user
 router.get("/user", verifyToken, getall);
 
-// PUT /api/auth/user/:id
+// PUT /api/user/:id
 router.put("/user/:id", verifyToken, upload.single("image"), updateUser);
 
+// POST /api/request-email-change
+router.post("/request-email-change", verifyToken, requestEmailChange);
+
+// POST /api/verify-email-change-otp
+router.post("/verify-email-change-otp", verifyToken, verifyEmailChangeOtp);
+
 // delete soft, hard
-// DELETE /api/auth/user/soft/:id
+// DELETE /api/user/soft/:id
 router.put("/user/trash/:id", verifyToken, softDeleteUser);
-// DELETE /api/auth/user/hard/:id
+// DELETE /api/user/hard/:id
 router.delete("/user/:id", verifyToken, hardDeleteUser);
 
 module.exports = router;
