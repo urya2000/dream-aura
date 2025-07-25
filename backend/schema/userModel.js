@@ -19,10 +19,12 @@ const userSchema = new mongoose.Schema({
   profilePicture: { type: String, default: "" },
   profilePicId : {type : String, default : null},
   password: { type: String, required: true },
+  latitude : { type: Number, default: null },
+  longitude : { type: Number, default: null },
   created_at: { type: Date, default: Date.now },
   updated_at: { type: Date, default: Date.now },
   last_login: { type: Date, default: Date.now },
-  trash: { type: Boolean, default: false }, // Soft delete flag
+  trash: { type: Boolean, default: false },
 });
 
 const User = mongoose.model("User", userSchema);
