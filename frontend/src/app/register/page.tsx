@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Input } from "@/components/ui";
 import Image from "next/image";
@@ -27,6 +27,8 @@ export default function RegisterPage() {
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  
 const router = useRouter();
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value: originalValue } = e.target;
@@ -104,6 +106,25 @@ const router = useRouter();
     setStep(2);
   };
 
+   //location lat nad long
+    useEffect(() => {
+      if ('geolocation' in navigator) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            setLocation({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+            });
+          },
+          (err) => {
+            setError(err.message); // Handle errors like permission denied          console.error('Error getting user location:', err);
+          }
+        );
+      } else {
+        setError('Geolocation is not supported by your browser.');
+      }
+    }, []);
+
   const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -120,6 +141,8 @@ const router = useRouter();
       await axios.post("/api/register", {
         ...formData,
         role: "buyer",
+        latitude: location?.latitude || null,
+        longitude: location?.longitude || null,
       });
 
       setStep(3);

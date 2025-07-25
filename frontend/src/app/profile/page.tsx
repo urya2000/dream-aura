@@ -17,8 +17,6 @@ interface ProfileData {
   pincode: string;
   phone: string;
   profilePicture: string;
-  latitude: number;
-  longitude: number;
 }
 
 interface Passwords {
@@ -35,8 +33,6 @@ const ProfilePage = () => {
   const [step, setStep] = useState(1);
   const [newEmail, setNewEmail] = useState("");
   const [otp, setOtp] = useState("");
-const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
-const [error, setError] = useState<string | null>(null);
 
   const [profileData, setProfileData] = useState<ProfileData>({
     name: "",
@@ -47,8 +43,6 @@ const [error, setError] = useState<string | null>(null);
     pincode: "",
     phone: "",
     profilePicture: "",
-    latitude: 0,
-    longitude: 0,
   });
 
   const [passwords, setPasswords] = useState<Passwords>({
@@ -71,36 +65,6 @@ const [error, setError] = useState<string | null>(null);
     }
   }, []);
 
-  //location lat nad long
-  useEffect(() => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setLocation({
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-          });
-        },
-        (err) => {
-          setError(err.message); // Handle errors like permission denied          console.error('Error getting user location:', err);
-        }
-      );
-    } else {
-      setError('Geolocation is not supported by your browser.');
-    }
-  }, []);
-
-    // Update profileData with location
-  useEffect(() => {
-    if (location) {
-      setProfileData((prev) => ({
-        ...prev,
-        latitude: location.latitude,
-        longitude: location.longitude,
-      }));
-    }
-  }, [location]);
-
   // Fetch profile data
   useEffect(() => {
     const fetchProfileData = async () => {
@@ -113,8 +77,7 @@ const [error, setError] = useState<string | null>(null);
         });
         if (res.data?.user) {
           const u = res.data.user;
-          setProfileData((prev) => ({
-            ...prev,
+          setProfileData({
             name: u.name || "",
             email: u.email || "",
             address: u.address || "",
@@ -123,7 +86,7 @@ const [error, setError] = useState<string | null>(null);
             pincode: u.pincode || "",
             phone: u.phone || "",
             profilePicture: u.profilePicture || "",
-          }));
+          });
         }
       } catch (err) {
         console.error("Error fetching profile data:", err);
