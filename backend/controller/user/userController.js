@@ -70,6 +70,8 @@ const register = async (req, res) => {
       pincode,
       role,
       password,
+      latitude,
+      longitude,
     } = req.body;
     const existingUser = await userModel.findOne({ email });
     if (existingUser) {
@@ -96,6 +98,8 @@ const register = async (req, res) => {
         pincode,
         role,
         password: hashedPassword,
+        latitude,
+        longitude,
       },
       expires: Date.now() + 10 * 60 * 1000, // 10 min expiry
     };
